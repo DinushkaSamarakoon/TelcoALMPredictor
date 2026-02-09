@@ -13,17 +13,19 @@ st.title("📡 NOC Proactive Intelligence Command Center")
 st.markdown("---")
 
 # ================= EMAIL ROUTING CONFIGURATION =================
-# Maps team names to their departmental emails (Update these with actual emails)
+# Maps team names to their departmental emails. 
+# The system will automatically send the right data to the right team.
 TEAM_EMAILS = {
-    "Field Team": "field.ops@company.com",
+    "Field Team": "shandinu98@gmail.com",
     "NOC Team": "noc.alerts@company.com",
-    "Power Team": "power.dept@company.com",
+    "Power Team": "sahansa985.com",
     "RAN Team": "ran.maintenance@company.com",
-    "Transmission Team": "tx.team@company.com"
+    "Transmission Team": "sahansa@mobitel.lk"
 }
 
 # ================= SIDEBAR: MULTI-FILE UPLOAD =================
 st.sidebar.header("📥 Data Ingestion")
+# Upgrade: Multi-file selection enabled as per supervisor request
 uploaded_files = st.sidebar.file_uploader(
     "Upload Alarm Logs (Batch Processing)", 
     type=["csv", "xlsx"], 
@@ -33,7 +35,7 @@ uploaded_files = st.sidebar.file_uploader(
 # ================= AUTOMATIC EMAIL ROUTING LOGIC =================
 def auto_dispatch_emails(df):
     sender_email = "telcoalarmpredictorv1@gmail.com"
-    sender_password = "bgdajtjpxuudvnmh"
+    sender_password = "bgdajtjpxuudvnmh" # Use your 16-character Gmail App Password
     
     # Identify unique teams in the filtered results
     active_teams = df['Team'].unique()
@@ -74,7 +76,7 @@ def auto_dispatch_emails(df):
 # ================= MAIN LOGIC =================
 if uploaded_files:
     try:
-        # Batch Processing: Combine all uploaded files
+        # Batch Processing: Combine all uploaded files into one analysis
         all_dfs = []
         for file in uploaded_files:
             temp_df = (
@@ -121,15 +123,15 @@ if uploaded_files:
         with v_col1:
             st.subheader("📊 Fault Risk Probability Trend")
             chart = alt.Chart(filtered_df).mark_bar().encode(
-                x=alt.X("Fault:N", sort="-y"),
-                y="Probability (%):Q",
+                x=alt.X("Fault:N", sort="-y", title="Fault Type"),
+                y=alt.Y("Probability (%):Q", title="Probability (%)"),
                 color=alt.Color("Risk Level:N", scale=alt.Scale(domain=["LOW", "MEDIUM", "HIGH"], range=["#2ecc71", "#f1c40f", "#e74c3c"])),
                 tooltip=list(filtered_df.columns)
             ).properties(height=350)
             st.altair_chart(chart, use_container_width=True)
 
         with v_col2:
-            st.subheader("🧮 Department Load")
+            st.subheader("🧮 Department Workload")
             team_pie = alt.Chart(filtered_df).mark_arc().encode(
                 theta="count()",
                 color="Team:N",
@@ -137,9 +139,26 @@ if uploaded_files:
             ).properties(height=350)
             st.altair_chart(team_pie, use_container_width=True)
 
-        # --- DATA VIEW ---
+        # --- DATA VIEW (Professional Data Editor Fix) ---
         st.subheader("📋 Intelligence Report & Maintenance Recommendations")
-        st.dataframe(filtered_df.style.background_gradient(subset=["Probability (%)"], cmap="YlOrRd"), use_container_width=True)
+        
+        st.data_editor(
+            filtered_df,
+            column_config={
+                "Probability (%)": st.column_config.ProgressColumn(
+                    "Fault Probability",
+                    help="Likelihood of the fault occurring",
+                    format="%f%%",
+                    min_value=0,
+                    max_value=100,
+                ),
+                "Risk Level": st.column_config.TextColumn("Risk Level"),
+                "Recommendation": st.column_config.TextColumn("Action Required", width="large")
+            },
+            use_container_width=True,
+            disabled=True, 
+            hide_index=True
+        )
 
         # --- ACTION CENTER ---
         st.markdown("---")
@@ -148,13 +167,19 @@ if uploaded_files:
         a_col1, a_col2 = st.columns(2)
         
         with a_col1:
+            # Automatic routing feature as per supervisor request
             if st.button("📢 Dispatch Smart Alerts to Responsible Teams"):
                 auto_dispatch_emails(filtered_df)
         
         with a_col2:
-            st.download_button("📥 Export NOC Master Report (CSV)", filtered_df.to_csv(index=False), "NOC_Report.csv", "text/csv")
+            st.download_button(
+                "📥 Export NOC Master Report (CSV)", 
+                filtered_df.to_csv(index=False), 
+                "NOC_Report.csv", 
+                "text/csv"
+            )
 
     except Exception as e:
-        st.error(f"Critical System Error: {e}")
+        st.error(f"System Error: {e}")
 else:
-    st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+    st.info("👈 Dashboard Idle. Please upload one or more alarm logs in the sidebar to begin.")
