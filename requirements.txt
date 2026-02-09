@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+
+scikit-learn
+joblib
+
+altair
+jsonschema
+rfc3987-syntax
