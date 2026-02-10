@@ -45,6 +45,68 @@ st.markdown("---")
 st.title("📡 TELCO Maintenance Portal")
 st.markdown("---")
 
+# --- VISUAL ANALYTICS ---
+        st.markdown("### 📈 Analytical Deep-Dive")
+        
+        # Row 1: Original Charts
+        v_col1, v_col2 = st.columns([2, 1])
+        with v_col1:
+            st.subheader("📊 Fault Risk Probability Trend")
+            chart = alt.Chart(filtered_df).mark_bar().encode(
+                x=alt.X("Fault:N", sort="-y", title="Predicted Fault Type"),
+                y=alt.Y("Probability (%):Q", title="Probability"),
+                color=alt.Color("Risk Level:N", scale=alt.Scale(domain=["LOW", "MEDIUM", "HIGH"], range=["#2ecc71", "#f1c40f", "#e74c3c"])),
+                tooltip=list(filtered_df.columns)
+            ).properties(height=350)
+            st.altair_chart(chart, use_container_width=True)
+
+        with v_col2:
+            st.subheader("🧮 Department Load")
+            team_pie = alt.Chart(filtered_df).mark_arc().encode(
+                theta="count()",
+                color="Team:N",
+                tooltip=["Team", "count()"]
+            ).properties(height=350)
+            st.altair_chart(team_pie, use_container_width=True)
+
+        # Row 2: NEW - Site-wise Fault Count & Risk Distribution
+        v_col3, v_col4 = st.columns(2)
+        
+        with v_col3:
+            st.subheader("📍 Site-wise Fault Distribution")
+            # This shows how many predicted faults each site has
+            site_chart = alt.Chart(filtered_df).mark_bar().encode(
+                y=alt.Y("Site:N", sort="-x", title="Site ID"),
+                x=alt.X("count():Q", title="Number of Predicted Faults"),
+                color=alt.Color("Fault:N", legend=alt.Legend(title="Fault Type")),
+                tooltip=["Site", "Fault", "count()"]
+            ).properties(height=400)
+            st.altair_chart(site_chart, use_container_width=True)
+
+        with v_col4:
+            st.subheader("⚖️ Risk Level Volume")
+            # This shows the total count per risk category (High/Medium/Low)
+            risk_vol = alt.Chart(filtered_df).mark_bar().encode(
+                x=alt.X("Risk Level:N", sort=["HIGH", "MEDIUM", "LOW"]),
+                y=alt.Y("count():Q", title="Total Alarms"),
+                color=alt.Color("Risk Level:N", scale=alt.Scale(domain=["LOW", "MEDIUM", "HIGH"], range=["#2ecc71", "#f1c40f", "#e74c3c"])),
+                tooltip=["Risk Level", "count()"]
+            ).properties(height=400)
+            st.altair_chart(risk_vol, use_container_width=True)
+
+        # Row 3: NEW - Alarm Trend Analysis (Timeline)
+        # Note: This assumes your detecterv5 results include a date or timestamp field
+        if 'Date' in filtered_df.columns or 'Timestamp' in filtered_df.columns:
+            st.subheader("🕒 Fault Prediction Trend Over Time")
+            time_col = 'Date' if 'Date' in filtered_df.columns else 'Timestamp'
+            trend_chart = alt.Chart(filtered_df).mark_line(point=True).encode(
+                x=alt.X(f"{time_col}:T", title="Timeline"),
+                y=alt.Y("count():Q", title="Volume of Faults"),
+                color="Risk Level:N",
+                tooltip=[time_col, "count()", "Risk Level"]
+            ).properties(height=300)
+            st.altair_chart(trend_chart, use_container_width=True)
+
 # ================= EMAIL ROUTING CONFIGURATION =================
 TEAM_EMAILS = {
     "Field": "sahansa985@gmail.com",
@@ -162,6 +224,7 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
 
