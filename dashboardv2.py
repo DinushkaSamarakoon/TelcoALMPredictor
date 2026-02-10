@@ -38,13 +38,8 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
 st.title("📡 TELCO Maintenance Portal")
 st.markdown("---")
-
-st.title("📡 TELCO Maintenance Portal")
-st.markdown("---")
-
 # --- VISUAL ANALYTICS ---
         st.markdown("### 📈 Analytical Deep-Dive")
         
@@ -224,6 +219,7 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
 
