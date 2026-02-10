@@ -8,10 +8,33 @@ import altair as alt
 
 # --- PROFESSIONAL NOC CONFIGURATION ---
 st.set_page_config(page_title="TELCO Maintenance Portal", layout="wide")
+header_bg_url = "https://raw.githubusercontent.com/DinushkaSamarakoon/TelcoALMPredictor/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png"
 
-st.title("📡 TELCO Maintenance Portal")
-st.markdown("---")
-
+st.markdown(
+    f"""
+    <style>
+    .top-header-box {{
+        background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("{header_bg_url}");
+        background-size: cover;
+        background-position: center;
+        padding: 40px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        color: white;
+    }}
+    .top-header-box h1 {{
+        color: white !important;
+        margin-bottom: 0px;
+    }}
+    </style>
+    
+    <div class="top-header-box">
+        <h1>📡 TELCO Maintenance Portal</h1>
+        <p>Proactive Intelligence Command Center</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 # ================= EMAIL ROUTING CONFIGURATION =================
 # Maps specific departments to your requested emails
 TEAM_EMAILS = {
@@ -166,4 +189,5 @@ else:
     if "emails_sent" in st.session_state:
         del st.session_state["emails_sent"]
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
