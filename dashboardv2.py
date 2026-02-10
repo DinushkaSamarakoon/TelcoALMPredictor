@@ -7,22 +7,39 @@ from email.mime.multipart import MIMEMultipart
 import altair as alt
 
 # --- PROFESSIONAL NOC CONFIGURATION ---
-st.set_page_config(page_title="Fault Prediction & Recommendation System - Telecom Sites", layout="wide")
+st.set_page_config(page_title="TELCO Maintenance Portal", layout="wide")
 
 st.markdown(
     """
     <style>
     .stApp {
-        background-image: url("https://github.com/DinushkaSamarakoon/TelcoALMPredictor/blob/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png");
+        background-image: url("https://raw.githubusercontent.com/DinushkaSamarakoon/TelcoALMPredictor/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png");
         background-attachment: fixed;
         background-size: cover;
+    }
+
+    /* This adds a dark semi-transparent layer so you can read your text */
+    .stApp::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* 50% dark overlay */
+        z-index: -1;
+    }
+    
+    /* Ensures all text is white for better contrast */
+    h1, h2, h3, p, span, label {
+        color: white !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-st.title("📡 TELCO Proactive Maintenance Center")
+st.title("📡 TELCO Maintenance Portal")
 st.markdown("---")
 
 # ================= EMAIL ROUTING CONFIGURATION =================
@@ -142,6 +159,7 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
 
