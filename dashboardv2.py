@@ -13,7 +13,7 @@ st.markdown(
     """
     <style>
     .stApp {
-        background-image: url("https://your-image-url.com/background.jpg");
+        background-image: url("https://github.com/DinushkaSamarakoon/TelcoALMPredictor/blob/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png");
         background-attachment: fixed;
         background-size: cover;
     }
@@ -142,5 +142,6 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
