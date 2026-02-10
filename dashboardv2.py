@@ -15,9 +15,9 @@ st.markdown("---")
 # ================= EMAIL ROUTING CONFIGURATION =================
 # Updated with your specific recipient list
 TEAM_EMAILS = {
-    "Field Team": "sahansa985@gmail.com",
-    "NOC Team": "shandinu98@gmail.com",
-    "Power Team": "sahansa@mobitel.lk"
+    "Field": "sahansa985@gmail.com",
+    "NOC": "shandinu98@gmail.com",
+    "Power": "sahansa@mobitel.lk"
 }
 
 # ================= SIDEBAR: MULTI-FILE UPLOAD =================
@@ -128,4 +128,5 @@ else:
     # Clear session state if files are removed
     if "emails_sent" in st.session_state:
         del st.session_state["emails_sent"]
+
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
