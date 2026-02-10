@@ -8,23 +8,36 @@ import altair as alt
 
 # --- PROFESSIONAL NOC CONFIGURATION ---
 st.set_page_config(page_title="TELCO Maintenance Portal", layout="wide")
-header_bg_url = "https://raw.githubusercontent.com/DinushkaSamarakoon/TelcoALMPredictor/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png"
+
+# --- BACKGROUND IMAGE LINKS ---
+header_bg = "https://raw.githubusercontent.com/DinushkaSamarakoon/TelcoALMPredictor/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png"
+sidebar_bg = "https://raw.githubusercontent.com/DinushkaSamarakoon/TelcoALMPredictor/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png"
 
 st.markdown(
     f"""
     <style>
+    /* 1. TOP HEADER BOX STYLE */
     .top-header-box {{
-        background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("{header_bg_url}");
+        background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url("{header_bg}");
         background-size: cover;
         background-position: center;
-        padding: 40px;
+        padding: 30px;
         border-radius: 15px;
-        margin-bottom: 25px;
+        margin-bottom: 20px;
         color: white;
     }}
-    .top-header-box h1 {{
+    .top-header-box h1 {{ color: white !important; margin: 0; }}
+
+    /* 2. LEFT SIDEBAR PANEL STYLE */
+    [data-testid="stSidebar"] {{
+        background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url("{sidebar_bg}");
+        background-size: cover;
+        background-position: center;
+    }}
+    
+    /* Ensure Sidebar text is readable */
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] label {{
         color: white !important;
-        margin-bottom: 0px;
     }}
     </style>
     
@@ -189,6 +202,7 @@ else:
     if "emails_sent" in st.session_state:
         del st.session_state["emails_sent"]
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
 
