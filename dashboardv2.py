@@ -9,6 +9,19 @@ import altair as alt
 # --- PROFESSIONAL NOC CONFIGURATION ---
 st.set_page_config(page_title="Fault Prediction & Recommendation System - Telecom Sites", layout="wide")
 
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-image: url("https://your-image-url.com/background.jpg");
+        background-attachment: fixed;
+        background-size: cover;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("📡 TELCO Proactive Maintenance Center")
 st.markdown("---")
 
@@ -129,4 +142,5 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
