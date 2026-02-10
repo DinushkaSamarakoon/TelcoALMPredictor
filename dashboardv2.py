@@ -65,7 +65,7 @@ def auto_dispatch_emails(df):
             team_df = df[df['Team'] == team]
             
             body = f"URGENT: Proactive Maintenance Required for {team}\n\n"
-            body += "The AI system has predicted the following future faults for your department:\n\n"
+            body += "The FDP system has predicted the following future faults for your department:\n\n"
             
             for _, row in team_df.iterrows():
                 body += (
@@ -80,7 +80,7 @@ def auto_dispatch_emails(df):
             msg = MIMEMultipart()
             msg["From"] = sender_email
             msg["To"] = receiver_email
-            msg["Subject"] = f"🚨 AI Maintenance Alert: {team} Department"
+            msg["Subject"] = f"🚨 TELCO Maintenance Alert: {team} Department"
             msg.attach(MIMEText(body, "plain"))
 
             try:
@@ -189,5 +189,6 @@ else:
     if "emails_sent" in st.session_state:
         del st.session_state["emails_sent"]
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
