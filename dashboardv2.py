@@ -1,185 +1,267 @@
-import streamlit as st
+# dashboard_pro.py
+# Professional NOC Alarm Prediction Dashboard with multi-file upload + auto-email routing
+import os, io, ssl, hashlib
 import pandas as pd
-from detecterv5 import predict_future_faults
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import streamlit as st
 import altair as alt
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+from datetime import datetime
 
-# --- PROFESSIONAL NOC CONFIGURATION ---
-st.set_page_config(page_title="NOC Proactive Intelligence Dashboard", layout="wide")
+from detecterv5 import predict_future_faults  # uses your trained model/encoders
+
+# ──────────────────────────────────────────────────────────────
+# Page + Theme
+# ──────────────────────────────────────────────────────────────
+st.set_page_config(page_title="NOC Proactive Intelligence Dashboard", layout="wide", page_icon="🚨")
+
+st.markdown("""
+<style>
+.block-container { padding-top: 1rem; padding-bottom: 0.5rem; }
+.kpi {border:1px solid #e5e7eb;border-radius:12px;padding:12px 16px;background:#fff;}
+.kpi .label{color:#6b7280;font-size:0.85rem;}
+.kpi .value{font-size:1.4rem;font-weight:700;}
+.dataframe td, .dataframe th { font-size: 0.92rem; }
+</style>
+""", unsafe_allow_html=True)
 
 st.title("📡 NOC Proactive Intelligence Command Center")
+st.caption("Batch ingest alarms → predict future faults → route to responsible teams with a click (or automatically).")
 st.markdown("---")
 
-# ================= EMAIL ROUTING CONFIGURATION =================
-# Maps team names to their departmental emails. 
-# The system will automatically send the right data to the right team.
-TEAM_EMAILS = {
-    "Field Team": "shandinu98@gmail.com",
-    "NOC Team": "noc.alerts@company.com",
-    "Power Team": "sahansa985.com",
-    "RAN Team": "ran.maintenance@company.com",
-    "Transmission Team": "sahansa@mobitel.lk"
+# ──────────────────────────────────────────────────────────────
+# Email routing (YOUR recipients)
+# ──────────────────────────────────────────────────────────────
+# Any predicted team string containing these tokens will route to these addresses.
+TEAM_RECIPIENTS = {
+    "noc":    ["sahansa985@gmail.com"],
+    "power":  ["shandinu98@gmail.com"],
+    "field":  ["sahansa@mobitel.lk"],
 }
 
-# ================= SIDEBAR: MULTI-FILE UPLOAD =================
+def recipients_for_team(team_text: str):
+    t = (team_text or "").lower()
+    rcpts = set()
+    if "noc" in t:    rcpts.update(TEAM_RECIPIENTS["noc"])
+    if "power" in t:  rcpts.update(TEAM_RECIPIENTS["power"])
+    if "field" in t:  rcpts.update(TEAM_RECIPIENTS["field"])
+    # Fallback: if model yielded unknown team, default to NOC
+    if not rcpts:
+        rcpts.update(TEAM_RECIPIENTS["noc"])
+    return sorted(rcpts)
+
+# SMTP configuration via environment (recommended) or Streamlit secrets
+SMTP_HOST = os.getenv("SMTP_HOST", st.secrets.get("SMTP_HOST", ""))
+SMTP_PORT = int(os.getenv("SMTP_PORT", st.secrets.get("SMTP_PORT", 587)))
+SMTP_USER = os.getenv("SMTP_USER", st.secrets.get("SMTP_USER", ""))
+SMTP_PASS = os.getenv("SMTP_PASS", st.secrets.get("SMTP_PASS", ""))
+SMTP_FROM = os.getenv("SMTP_FROM", st.secrets.get("SMTP_FROM", SMTP_USER))
+
+EMAIL_ENABLED = bool(SMTP_HOST and SMTP_FROM)
+
+def send_html_email(to_list, subject, html_body):
+    if not EMAIL_ENABLED:
+        st.warning("Email not configured. Set SMTP_* env vars or Streamlit secrets.")
+        return False
+    msg = MIMEMultipart("alternative")
+    msg["From"] = SMTP_FROM
+    msg["To"] = ", ".join(to_list)
+    msg["Subject"] = subject
+    msg.attach(MIMEText(html_body, "html"))
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as server:
+            server.starttls(context=context)
+            if SMTP_USER and SMTP_PASS:
+                server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"Email failed: {e}")
+        return False
+
+def df_html_table(df: pd.DataFrame, max_rows=60):
+    cols = ["Site", "Location", "Fault", "Probability (%)", "Risk Level", "Recommendation", "Team"]
+    present = [c for c in cols if c in df.columns]
+    show = df[present].head(max_rows).copy()
+    return show.to_html(index=False, escape=False)
+
+# ──────────────────────────────────────────────────────────────
+# Sidebar: Upload + Options
+# ──────────────────────────────────────────────────────────────
 st.sidebar.header("📥 Data Ingestion")
-# Upgrade: Multi-file selection enabled as per supervisor request
 uploaded_files = st.sidebar.file_uploader(
-    "Upload Alarm Logs (Batch Processing)", 
-    type=["csv", "xlsx"], 
+    "Upload alarm logs (CSV/XLSX) — multiple allowed",
+    type=["csv", "xlsx", "xls"],
     accept_multiple_files=True
 )
 
-# ================= AUTOMATIC EMAIL ROUTING LOGIC =================
-def auto_dispatch_emails(df):
-    sender_email = "telcoalarmpredictorv1@gmail.com"
-    sender_password = "bgdajtjpxuudvnmh" # Use your 16-character Gmail App Password
-    
-    # Identify unique teams in the filtered results
-    active_teams = df['Team'].unique()
-    
-    for team in active_teams:
-        if team in TEAM_EMAILS:
-            receiver_email = TEAM_EMAILS[team]
-            team_df = df[df['Team'] == team]
-            
-            body = f"URGENT: Proactive Maintenance Required for {team}\n\n"
-            body += "The AI system has predicted the following future faults for your site cluster:\n\n"
-            
-            for _, row in team_df.iterrows():
-                body += (
-                    f"📍 SITE: {row['Site']} ({row['Location']})\n"
-                    f"⚠️ PREDICTED FAULT: {row['Fault']}\n"
-                    f"📈 PROBABILITY: {row['Probability (%)']}%\n"
-                    f"🔴 RISK LEVEL: {row['Risk Level']}\n"
-                    f"🛠️ RECOMMENDATION: {row['Recommendation']}\n"
-                    f"----------------------------------------\n"
-                )
+st.sidebar.header("✉️ Notification Settings")
+auto_send = st.sidebar.toggle("Auto-send emails after prediction", value=False,
+                              help="Automatically route results to teams as soon as predictions are ready.")
+group_by_team = st.sidebar.toggle("Group emails by team", value=True)
+max_rows_email = st.sidebar.number_input("Max rows per email", min_value=10, max_value=2000, value=200, step=10)
+subject_prefix = st.sidebar.text_input("Email subject prefix", value="[NOC] AI Predicted Faults")
 
-            msg = MIMEMultipart()
-            msg["From"] = sender_email
-            msg["To"] = receiver_email
-            msg["Subject"] = f"🚨 AI Maintenance Alert: {team}"
-            msg.attach(MIMEText(body, "plain"))
-
-            try:
-                with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
-                    server.starttls()
-                    server.login(sender_email, sender_password)
-                    server.send_message(msg)
-                st.sidebar.success(f"✅ Dispatched to {team}")
-            except Exception as e:
-                st.sidebar.error(f"❌ Failed to reach {team}")
-
-# ================= MAIN LOGIC =================
-if uploaded_files:
-    try:
-        # Batch Processing: Combine all uploaded files into one analysis
-        all_dfs = []
-        for file in uploaded_files:
-            temp_df = (
-                pd.read_csv(file, engine="python", sep=None, on_bad_lines="skip")
-                if file.name.endswith(".csv") else pd.read_excel(file)
-            )
-            all_dfs.append(temp_df)
-        
-        raw_df = pd.concat(all_dfs, ignore_index=True)
-
-        with st.spinner("Analyzing Batch Data..."):
-            results = predict_future_faults(raw_df)
-
-        if not results:
-            st.warning("No significant future fault risk detected.")
-            st.stop()
-
-        results_df = pd.DataFrame(results)
-
-        # --- KPI METRIC CARDS ---
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Predictions", len(results_df))
-        col2.metric("Critical Risks (High)", len(results_df[results_df["Risk Level"] == "HIGH"]))
-        col3.metric("Affected Sites", results_df["Site"].nunique())
-        col4.metric("Avg. Probability", f"{round(results_df['Probability (%)'].mean(), 1)}%")
-
-        st.markdown("---")
-
-        # --- ADVANCED FILTERS (Sidebar) ---
-        st.sidebar.header("🔍 Filtering & Search")
-        site_filter = st.sidebar.multiselect("Select Site ID", options=sorted(results_df["Site"].unique()))
-        team_filter = st.sidebar.multiselect("Responsible Team", options=sorted(results_df["Team"].unique()))
-        risk_filter = st.sidebar.multiselect("Risk Category", options=["HIGH", "MEDIUM", "LOW"], default=["HIGH", "MEDIUM", "LOW"])
-
-        # Apply logic
-        filtered_df = results_df.copy()
-        if site_filter: filtered_df = filtered_df[filtered_df["Site"].isin(site_filter)]
-        if team_filter: filtered_df = filtered_df[filtered_df["Team"].isin(team_filter)]
-        if risk_filter: filtered_df = filtered_df[filtered_df["Risk Level"].isin(risk_filter)]
-
-        # --- VISUAL ANALYTICS ---
-        v_col1, v_col2 = st.columns([2, 1])
-
-        with v_col1:
-            st.subheader("📊 Fault Risk Probability Trend")
-            chart = alt.Chart(filtered_df).mark_bar().encode(
-                x=alt.X("Fault:N", sort="-y", title="Fault Type"),
-                y=alt.Y("Probability (%):Q", title="Probability (%)"),
-                color=alt.Color("Risk Level:N", scale=alt.Scale(domain=["LOW", "MEDIUM", "HIGH"], range=["#2ecc71", "#f1c40f", "#e74c3c"])),
-                tooltip=list(filtered_df.columns)
-            ).properties(height=350)
-            st.altair_chart(chart, use_container_width=True)
-
-        with v_col2:
-            st.subheader("🧮 Department Workload")
-            team_pie = alt.Chart(filtered_df).mark_arc().encode(
-                theta="count()",
-                color="Team:N",
-                tooltip=["Team", "count()"]
-            ).properties(height=350)
-            st.altair_chart(team_pie, use_container_width=True)
-
-        # --- DATA VIEW (Professional Data Editor Fix) ---
-        st.subheader("📋 Intelligence Report & Maintenance Recommendations")
-        
-        st.data_editor(
-            filtered_df,
-            column_config={
-                "Probability (%)": st.column_config.ProgressColumn(
-                    "Fault Probability",
-                    help="Likelihood of the fault occurring",
-                    format="%f%%",
-                    min_value=0,
-                    max_value=100,
-                ),
-                "Risk Level": st.column_config.TextColumn("Risk Level"),
-                "Recommendation": st.column_config.TextColumn("Action Required", width="large")
-            },
-            use_container_width=True,
-            disabled=True, 
-            hide_index=True
-        )
-
-        # --- ACTION CENTER ---
-        st.markdown("---")
-        st.subheader("🚀 Operational Actions")
-        
-        a_col1, a_col2 = st.columns(2)
-        
-        with a_col1:
-            # Automatic routing feature as per supervisor request
-            if st.button("📢 Dispatch Smart Alerts to Responsible Teams"):
-                auto_dispatch_emails(filtered_df)
-        
-        with a_col2:
-            st.download_button(
-                "📥 Export NOC Master Report (CSV)", 
-                filtered_df.to_csv(index=False), 
-                "NOC_Report.csv", 
-                "text/csv"
-            )
-
-    except Exception as e:
-        st.error(f"System Error: {e}")
+st.sidebar.markdown("---")
+if EMAIL_ENABLED:
+    st.sidebar.success(f"Email via {SMTP_HOST} as {SMTP_FROM}")
 else:
-    st.info("👈 Dashboard Idle. Please upload one or more alarm logs in the sidebar to begin.")
+    st.sidebar.warning("Email is disabled. Configure SMTP_HOST/PORT/USER/PASS/FROM.")
+
+# maintain a simple “already sent” cache in session to limit duplicates
+if "sent_signatures" not in st.session_state:
+    st.session_state.sent_signatures = {}
+
+# ──────────────────────────────────────────────────────────────
+# Data Loader (multi-file + Excel sheet merge)
+# ──────────────────────────────────────────────────────────────
+def read_any(path_or_bytes, name: str) -> pd.DataFrame:
+    name = name.lower()
+    try:
+        if name.endswith(".csv"):
+            return pd.read_csv(path_or_bytes, engine="python", sep=None, on_bad_lines="skip")
+        elif name.endswith((".xlsx", ".xls")):
+            x = pd.ExcelFile(path_or_bytes)
+            frames = [x.parse(s) for s in x.sheet_names]  # merge all sheets
+            return pd.concat(frames, ignore_index=True)
+        else:
+            return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Failed to read {name}: {e}")
+        return pd.DataFrame()
+
+def load_batch(files) -> pd.DataFrame:
+    if not files:
+        return pd.DataFrame()
+    frames = []
+    for f in files:
+        df = read_any(f, f.name)
+        if not df.empty:
+            frames.append(df)
+    if not frames:
+        return pd.DataFrame()
+    raw = pd.concat(frames, ignore_index=True)
+    return raw
+
+# ──────────────────────────────────────────────────────────────
+# Main flow: ingest → predict → UI → email
+# ──────────────────────────────────────────────────────────────
+raw_df = load_batch(uploaded_files)
+if raw_df.empty:
+    st.info("👈 Upload one or more CSV/Excel files to begin.")
+    st.stop()
+
+with st.spinner("Analyzing uploaded alarms…"):
+    results = predict_future_faults(raw_df)
+
+if not results:
+    st.warning("No significant future fault risk detected in this batch.")
+    st.stop()
+
+df = pd.DataFrame(results)
+
+# ── KPI cards ────────────────────────────────────────────────
+c1, c2, c3, c4 = st.columns(4)
+c1.markdown(f"<div class='kpi'><div class='label'>Total Predictions</div><div class='value'>{len(df)}</div></div>", unsafe_allow_html=True)
+c2.markdown(f"<div class='kpi'><div class='label'>HIGH Risk</div><div class='value'>{(df['Risk Level']=='HIGH').sum()}</div></div>", unsafe_allow_html=True)
+c3.markdown(f"<div class='kpi'><div class='label'>Affected Sites</div><div class='value'>{df['Site'].nunique()}</div></div>", unsafe_allow_html=True)
+avg_prob = round(df['Probability (%)'].mean(), 1) if 'Probability (%)' in df else 0
+c4.markdown(f"<div class='kpi'><div class='label'>Avg Probability</div><div class='value'>{avg_prob}%</div></div>", unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ── Filters ──────────────────────────────────────────────────
+left, right = st.columns([2,1])
+with left:
+    st.subheader("📊 Fault Risk Overview")
+    # bar: probability by fault
+    bar = alt.Chart(df).mark_bar().encode(
+        x=alt.X("Fault:N", sort="-y"),
+        y="Probability (%):Q",
+        color=alt.Color("Risk Level:N", scale=alt.Scale(domain=["LOW","MEDIUM","HIGH"],
+                                                       range=["#2ecc71","#f1c40f","#e74c3c"])),
+        tooltip=list(df.columns)
+    ).properties(height=340)
+    st.altair_chart(bar, use_container_width=True)
+
+with right:
+    st.subheader("🧭 Department Load")
+    pie = alt.Chart(df).mark_arc().encode(
+        theta="count()",
+        color="Team:N",
+        tooltip=["Team","count()"]
+    ).properties(height=340)
+    st.altair_chart(pie, use_container_width=True)
+
+# ── Data view + quick filters ────────────────────────────────
+st.subheader("📑 Intelligence Report & Recommendations")
+f1, f2, f3 = st.columns(3)
+site_filter = f1.multiselect("Site(s)", sorted(df["Site"].unique()))
+risk_filter = f2.multiselect("Risk Level", ["LOW","MEDIUM","HIGH"], default=["LOW","MEDIUM","HIGH"])
+team_text = f3.text_input("Team contains", value="")
+
+view = df.copy()
+if site_filter:
+    view = view[view["Site"].isin(site_filter)]
+if risk_filter:
+    view = view[view["Risk Level"].isin(risk_filter)]
+if team_text:
+    view = view[view["Team"].str.contains(team_text, case=False, na=False)]
+
+st.dataframe(view.style.background_gradient(subset=["Probability (%)"], cmap="YlOrRd"),
+             use_container_width=True, hide_index=True)
+
+st.markdown("---")
+
+# ── Action Center ────────────────────────────────────────────
+colA, colB = st.columns(2)
+with colA:
+    if st.button("📧 Send Emails to Responsible Teams"):
+        sent_count = 0
+        if group_by_team:
+            for team, grp in view.groupby("Team"):
+                to_list = recipients_for_team(team)
+                html = df_html_table(grp, max_rows=max_rows_email)
+                # de-dup per team (hash by data & team)
+                sig = hashlib.sha256((team + grp.to_csv(index=False)).encode()).hexdigest()
+                if st.session_state.sent_signatures.get(team) == sig:
+                    st.info(f"Skipped {team}: already sent this content.")
+                    continue
+                ok = send_html_email(to_list, f"{subject_prefix} — {team} ({len(grp)})", html)
+                if ok:
+                    st.session_state.sent_signatures[team] = sig
+                    sent_count += 1
+        else:
+            to_all = []
+            for t in view["Team"].fillna("").unique():
+                to_all += recipients_for_team(t)
+            to_all = sorted(set(to_all))
+            html = df_html_table(view, max_rows=max_rows_email)
+            ok = send_html_email(to_all, f"{subject_prefix} — {len(view)} items", html)
+            if ok:
+                sent_count = 1
+        if sent_count:
+            st.success(f"Emails sent: {sent_count}")
+        else:
+            st.warning("No emails sent.")
+
+with colB:
+    st.download_button("⬇️ Export Predictions (CSV)", data=view.to_csv(index=False),
+                       file_name=f"Predictions_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv",
+                       mime="text/csv")
+
+# ── Auto-send if enabled ─────────────────────────────────────
+if auto_send:
+    # same logic as button but silent
+    for team, grp in view.groupby("Team"):
+        to_list = recipients_for_team(team)
+        html = df_html_table(grp, max_rows=max_rows_email)
+        sig = hashlib.sha256((team + grp.to_csv(index=False)).encode()).hexdigest()
+        if st.session_state.sent_signatures.get(team) == sig:
+            continue
+        ok = send_html_email(to_list, f"{subject_prefix} — {team} ({len(grp)})", html)
+        if ok:
+            st.session_state.sent_signatures[team] = sig
+    st.info("Auto-send processed. (Duplicates are skipped by signature.)")
