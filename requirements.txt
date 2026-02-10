@@ -4,7 +4,7 @@ numpy
 openpyxl
 scikit-learn
 joblib
-
+matplotlib
 altair
 jsonschema
 rfc3987-syntax
