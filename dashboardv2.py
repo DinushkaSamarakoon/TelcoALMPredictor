@@ -7,13 +7,12 @@ from email.mime.multipart import MIMEMultipart
 import altair as alt
 
 # --- PROFESSIONAL NOC CONFIGURATION ---
-st.set_page_config(page_title="NOC Proactive Intelligence Dashboard", layout="wide")
+st.set_page_config(page_title="Fault Prediction & Recommendation System - Telecom Sites", layout="wide")
 
-st.title("📡 NOC Proactive Intelligence Command Center")
+st.title("📡 TELCO Proactive Maintenance Center")
 st.markdown("---")
 
 # ================= EMAIL ROUTING CONFIGURATION =================
-# Updated with your specific recipient list
 TEAM_EMAILS = {
     "Field": "sahansa985@gmail.com",
     "NOC": "shandinu98@gmail.com",
@@ -44,7 +43,7 @@ def auto_dispatch_emails(df):
             team_df = df[df['Team'] == team]
             
             body = f"URGENT: Proactive Maintenance Required for {team}\n\n"
-            body += "The AI system has predicted the following future faults for your department:\n\n"
+            body += "The FDP system has predicted the following future faults for your department:\n\n"
             
             for _, row in team_df.iterrows():
                 body += (
@@ -59,7 +58,7 @@ def auto_dispatch_emails(df):
             msg = MIMEMultipart()
             msg["From"] = sender_email
             msg["To"] = receiver_email
-            msg["Subject"] = f"🚨 AI Maintenance Alert: {team} Department"
+            msg["Subject"] = f"🚨 TELCO Maintenance Alert: {team} Department"
             msg.attach(MIMEText(body, "plain"))
 
             try:
@@ -130,3 +129,4 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
