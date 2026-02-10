@@ -40,9 +40,7 @@ st.markdown(
 )
 st.title("📡 TELCO Maintenance Portal")
 st.markdown("---")
-# --- VISUAL ANALYTICS ---
-        st.markdown("### 📈 Analytical Deep-Dive")
-        
+# --- VISUAL ANALYTICS ---     
         # Row 1: Original Charts
         v_col1, v_col2 = st.columns([2, 1])
         with v_col1:
@@ -219,6 +217,7 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
 
