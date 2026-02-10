@@ -48,6 +48,17 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+# ================= SIDEBAR: DATA & FILTERS =================
+st.sidebar.header("📥 Data Ingestion")
+uploaded_files = st.sidebar.file_uploader(
+    "Upload Alarm Logs (Batch Processing)", 
+    type=["csv", "xlsx"], 
+    accept_multiple_files=True
+)
+
+# Placeholders for filters (will be populated once data is loaded)
+site_filter = []
+risk_filter = []
 # ================= EMAIL ROUTING CONFIGURATION =================
 # Maps specific departments to your requested emails
 TEAM_EMAILS = {
@@ -202,6 +213,7 @@ else:
     if "emails_sent" in st.session_state:
         del st.session_state["emails_sent"]
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
 
