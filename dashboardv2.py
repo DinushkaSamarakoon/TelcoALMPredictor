@@ -14,18 +14,11 @@ st.markdown(
     <style>
     .stApp {
         background-image: url("https://raw.githubusercontent.com/DinushkaSamarakoon/TelcoALMPredictor/main/Gemini_Generated_Image_gx3ewvgx3ewvgx3e.png");
-        
-        /* Fixed position so it doesn't move when you scroll */
         background-attachment: fixed;
-        
-        /* This forces the image to stretch to the full width and height of the screen */
-        background-size: 100vw 100vh;
-        
-        /* Prevents the image from repeating if the page is very long */
-        background-repeat: no-repeat;
+        background-size: cover;
     }
 
-    /* Dark overlay for readability */
+    /* This adds a dark semi-transparent layer so you can read your text */
     .stApp::before {
         content: "";
         position: absolute;
@@ -33,18 +26,21 @@ st.markdown(
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5); 
+        background-color: rgba(0, 0, 0, 0.5); /* 50% dark overlay */
         z-index: -1;
     }
     
-    /* Ensure text remains visible over the image */
-    h1, h2, h3, p, span, label, .stMetric {
+    /* Ensures all text is white for better contrast */
+    h1, h2, h3, p, span, label {
         color: white !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
+
+st.title("📡 TELCO Maintenance Portal")
+st.markdown("---")
 
 st.title("📡 TELCO Maintenance Portal")
 st.markdown("---")
@@ -166,6 +162,7 @@ else:
         del st.session_state["emails_sent"]
 
     st.info("👈 Dashboard Idle. Please upload alarm logs in the sidebar to begin.")
+
 
 
 
