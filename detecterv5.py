@@ -145,6 +145,23 @@ def predict_future_faults(raw_df):
         f"{TIME_WINDOW_MINUTES}min"
     )
 
+    # Remove duplicate columns
+    df = df.loc[:, ~df.columns.duplicated()]
+
+    # Flatten MultiIndex columns if exist
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [
+            "_".join([str(i) for i in col if str(i) != "nan"])
+            for col in df.columns
+        ]
+
+    # Ensure grouping columns are 1D
+    for col in ["ne_name", "location_key", "time_window"]:
+        if col in df.columns:
+            if isinstance(df[col], pd.DataFrame):
+                df[col] = df[col].iloc[:, 0]
+            df[col] = df[col].astype(str)
+            
     # Build timeline
     timeline = defaultdict(list)
     for (ne, loc, win), g in df.groupby(
@@ -199,3 +216,4 @@ def predict_future_faults(raw_df):
             })
 
     return results
+
